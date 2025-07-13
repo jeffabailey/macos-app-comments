@@ -1,0 +1,26 @@
+You are an expert on macOS applications. I will provide you with a list of macOS apps and their available metadata. For each app, please provide a clear, concise one-sentence description that explains what the app does.
+
+Write simple, direct descriptions that focus on the core functionality. Avoid marketing language, superlatives, and phrases like 'perfect for', 'ideal for', 'designed for', 'suitable for', 'catering to', etc.
+
+Examples of good descriptions:
+- 'Downloads videos, playlists, channels, and subtitles from YouTube and other platforms.'
+- 'Professional digital audio workstation for music production and live performance.'
+- 'Blocks ads and trackers across web browsers.'
+
+Examples of bad descriptions:
+- 'A user-friendly application perfect for content creators who want to save online content for offline viewing.'
+- 'An innovative app designed for users seeking a distraction-free experience.'
+
+Format your response as a JSON object where each key is the app name and each value is the description.
+
+Here are the apps to describe:
+
+{% for app in apps %}
+App Name: {{ app.name }}
+{% if app.description %}App Description: {{ app.description }}
+{% endif %}{% if app.version %}Version: {{ app.version }}
+{% endif %}{% if app.bundle_identifier %}Bundle ID: {{ app.bundle_identifier }}
+{% endif %}Path: {{ app.path }}
+
+{% endfor %}
+Please provide your descriptions in JSON format. 

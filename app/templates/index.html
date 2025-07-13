@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>macOS Applications</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>macOS Applications</h1>
+            <p>Click on any description to copy it to your clipboard</p>
+        </div>
+        
+        <div class="content">
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number">{{ applications|length }}</div>
+                    <div class="stat-label">Applications</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="copied-count">0</div>
+                    <div class="stat-label">Copied Today</div>
+                </div>
+            </div>
+            
+            <div class="search-box">
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <input type="text" 
+                           class="search-input" 
+                           placeholder="Search applications..." 
+                           hx-trigger="keyup changed delay:500ms"
+                           hx-target="#applications-table"
+                           hx-include="[name='search']"
+                           name="search"
+                           style="flex: 1;">
+                    <button class="refresh-button" 
+                            onclick="refreshApplications()"
+                            id="refresh-btn">
+                        🔄 Refresh Applications
+                    </button>
+                </div>
+            </div>
+            
+            <div class="applications-grid" id="applications-table">
+                <div class="grid-row">
+                    <div class="grid-header">Application</div>
+                    <div class="grid-header">Description</div>
+                    <div class="grid-header">Action</div>
+                </div>
+                
+                {% for app_name, description in applications.items() %}
+                <div class="grid-row">
+                    <div class="grid-item app-name">{{ app_name }}</div>
+                    <div class="grid-item app-description" 
+                         onclick="copyToClipboard('{{ description|replace("'", "\\'")|replace('"', '\\"') }}', '{{ app_name|replace("'", "\\'")|replace('"', '\\"') }}')">
+                        {{ description }}
+                    </div>
+                    <div class="grid-item">
+                        <button class="copy-button" 
+                                onclick="copyToClipboard('{{ description|replace("'", "\\'")|replace('"', '\\"') }}', '{{ app_name|replace("'", "\\'")|replace('"', '\\"') }}')">
+                            Copy
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification"></div>
+    
+    <!-- Status Modal -->
+    <div class="modal" id="status-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔄 Refreshing Applications</h3>
+                <button class="modal-close" onclick="closeStatusModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="status-output" id="status-output">
+                    <div class="status-line">Starting refresh process...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-button" onclick="closeStatusModal()" id="close-btn" style="display: none;">Close</button>
+            </div>
+        </div>
+    </div>
+    
+
+</body>
+</html> 
