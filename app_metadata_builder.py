@@ -113,75 +113,112 @@ def strip_ansi(text):
     return ansi_escape.sub('', text)
 
 
-def parse_goose_response(response):
-    """Parse the JSON response from Goose CLI, handling code blocks, repeated keys, and nested JSON."""
+def _try_parse_json(text):
+    """Try to parse JSON from text."""
+    try:
+        return json.loads(text)
+    except Exception:
+        return None
+
+
+def _extract_key_value_pairs(text):
+    """Extract key-value pairs from text using regex."""
     import re
+    obj = {}
+    key_value_pattern = re.compile(r'"([^\"]+)":\s*"([^\"]*)",?')
+    for line in text.splitlines():
+        line = line.strip()
+        m = key_value_pattern.match(line)
+        if m:
+            key, value = m.group(1), m.group(2)
+            obj[key] = value
+    return obj
 
-    response = strip_ansi(response)
 
-    # 1. Try all code blocks (with or without json label), allow for whitespace/newlines after opening and before closing backticks
+def _try_parse_code_blocks(response):
+    """Try to parse JSON from code blocks."""
+    import re
     code_blocks = re.findall(
         r"```(?:json)?[ \t]*\n([\s\S]*?)\n[ \t]*```",
         response, re.IGNORECASE
     )
     for block in reversed(code_blocks):
         block = block.strip()
-        try:
-            result = json.loads(block)
+        result = _try_parse_json(block)
+        if result:
             return result
-        except Exception:
-            pass
-        # Fallback: extract key-value pairs (flat only)
-        obj = {}
-        key_value_pattern = re.compile(r'"([^\"]+)":\s*"([^\"]*)",?')
-        for line in block.splitlines():
-            line = line.strip()
-            m = key_value_pattern.match(line)
-            if m:
-                key, value = m.group(1), m.group(2)
-                obj[key] = value
+        obj = _extract_key_value_pairs(block)
         if obj:
             return obj
+    return None
 
-    # 2. Look for JSON objects that start with { and end with } in the response
+
+def _is_valid_string_dict(parsed):
+    """Check if parsed result is a valid dictionary with string values."""
+    return (
+        parsed and isinstance(parsed, dict) and len(parsed) > 0
+        and all(isinstance(v, str) for v in parsed.values())
+    )
+
+
+def _try_parse_json_objects(response):
+    """Try to parse JSON objects from response."""
+    import re
     json_pattern = r'(\{[\s\S]*\})'
     matches = re.findall(json_pattern, response, re.DOTALL)
     for match in reversed(matches):
         match = match.strip()
-        try:
-            parsed = json.loads(match)
-            if isinstance(parsed, dict) and len(parsed) > 0:
-                if all(isinstance(v, str) for v in parsed.values()):
-                    return parsed
-        except Exception:
-            continue
+        parsed = _try_parse_json(match)
+        if _is_valid_string_dict(parsed):
+            return parsed
+    return None
 
-    # 3. Fallback: extract from first { to last } and try to parse
+
+def _has_valid_json_bounds(response):
+    """Check if response has valid JSON bounds."""
     first = response.find('{')
     last = response.rfind('}')
-    if first != -1 and last != -1 and last > first:
-        candidate = response[first:last + 1].strip()
-        try:
-            result = json.loads(candidate)
-            return result
-        except Exception:
-            # Fallback: extract key-value pairs (flat only)
-            obj = {}
-            key_value_pattern = re.compile(r'"([^\"]+)":\s*"([^\"]*)",?')
-            for line in candidate.splitlines():
-                line = line.strip()
-                m = key_value_pattern.match(line)
-                if m:
-                    key, value = m.group(1), m.group(2)
-                    obj[key] = value
-            if obj:
-                return obj
+    return first != -1 and last != -1 and last > first
+
+
+def _try_parse_fallback(response):
+    """Try to parse JSON from first { to last }."""
+    if not _has_valid_json_bounds(response):
+        return None
+
+    first = response.find('{')
+    last = response.rfind('}')
+    candidate = response[first:last + 1].strip()
+    result = _try_parse_json(candidate)
+    if result:
+        return result
+    obj = _extract_key_value_pairs(candidate)
+    if obj:
+        return obj
+    return None
+
+
+def parse_goose_response(response):
+    """Parse the JSON response from Goose CLI, handling code blocks, repeated keys, and nested JSON."""
+    response = strip_ansi(response)
+
+    result = _try_parse_code_blocks(response)
+    if result:
+        return result
+
+    result = _try_parse_json_objects(response)
+    if result:
+        return result
+
+    result = _try_parse_fallback(response)
+    if result:
+        return result
 
     return {}
 
 
-def main():
-    # Parse command line arguments
+def _parse_arguments():
+    """Parse command line arguments."""
     debug_mode = False
     if len(sys.argv) > 1:
         if sys.argv[1] in ['--help', '-h']:
@@ -189,60 +226,70 @@ def main():
             print("Requirements: brew install goose")
             print("\nOptions:")
             print("  --debug, -d    Enable debug output")
-            return
+            return None
         elif sys.argv[1] in ['--debug', '-d']:
             debug_mode = True
+    return debug_mode
+
+
+def _process_batch(batch, batch_num, num_batches, debug_mode):
+    """Process a single batch of applications."""
+    print(f"Processing batch {batch_num} of {num_batches} ({len(batch)} apps)...")
+
+    prompt_file = create_prompt_file(batch)
+    response = run_goose_cli(prompt_file, debug_mode)
+
+    if response is None:
+        print("  ❌ No response from Goose CLI")
+        return {}
+
+    if debug_mode:
+        print(f"  Response length: {len(response)}")
+
+    descriptions = parse_goose_response(response)
+    print(f"  Parsed {len(descriptions)} descriptions from batch")
+
+    if descriptions and debug_mode:
+        print(f"  Sample: {list(descriptions.keys())[:3]}")
+    elif not descriptions:
+        print("  ❌ No descriptions parsed from response")
+
+    return descriptions
+
+
+def _save_results(all_descriptions):
+    """Save results to applications.json."""
+    with open("applications.json", 'w', encoding='utf-8') as f:
+        json.dump(all_descriptions, f, indent=2, ensure_ascii=False)
+    print(f"\nSaved {len(all_descriptions)} descriptions to applications.json")
+
+
+def main():
+    debug_mode = _parse_arguments()
+    if debug_mode is None:
+        return
 
     apps = get_applications()
     if not apps:
         print("No applications found in /Applications.")
         return
 
-    print(
-        "Found {} apps. Creating prompt file(s) and generating descriptions in "
-        "batches of {}...".format(len(apps), BATCH_SIZE)
-    )
+    print(f"Found {len(apps)} apps. Creating prompt file(s) and generating descriptions in batches of {BATCH_SIZE}...")
+
     all_descriptions = {}
     num_batches = (len(apps) + BATCH_SIZE - 1) // BATCH_SIZE
+
     for i in range(0, len(apps), BATCH_SIZE):
         batch = apps[i:i + BATCH_SIZE]
-        print(
-            "Processing batch {} of {} ({} apps)...".format(
-                i // BATCH_SIZE + 1, num_batches, len(batch)
-            )
-        )
-        prompt_file = create_prompt_file(batch)
-        response = run_goose_cli(prompt_file, debug_mode)
-        if response is None:
-            print("  ❌ No response from Goose CLI")
-            continue
-        if debug_mode:
-            print(f"  Response length: {len(response)}")
-        descriptions = parse_goose_response(response)
-        print(f"  Parsed {len(descriptions)} descriptions from batch")
-        if descriptions:
-            if debug_mode:
-                print(
-                    f"  Sample: {list(descriptions.keys())[:3]}"
-                )
-        else:
-            print("  ❌ No descriptions parsed from response")
+        batch_num = i // BATCH_SIZE + 1
+        descriptions = _process_batch(batch, batch_num, num_batches, debug_mode)
         all_descriptions.update(descriptions)
+
         if debug_mode:
             print(f"  Total descriptions so far: {len(all_descriptions)}")
 
-    with open("applications.json", 'w', encoding='utf-8') as f:
-        json.dump(
-            all_descriptions, f, indent=2, ensure_ascii=False
-        )
-    print(
-        "\nSaved {} descriptions to applications.json".format(
-            len(all_descriptions)
-        )
-    )
+    _save_results(all_descriptions)
 
 
 if __name__ == "__main__":
     main()
-
-    # 1. Try all code blocks (with or without json label), allow for whitespace/newlines after opening and before closing backticks
