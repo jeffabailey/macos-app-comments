@@ -31,7 +31,11 @@ def get_app_details(app_path, app_name):
         'path': app_path,
         'description': '',
         'version': '',
-        'bundle_identifier': ''
+        'bundle_identifier': '',
+        'created': '',
+        'modified': '',
+        'copyright': '',
+        'CFBundleDescription': ''
     }
 
     # Try to read Info.plist for app metadata
@@ -44,6 +48,7 @@ def get_app_details(app_path, app_name):
             # Extract common metadata fields
             if 'CFBundleDescription' in plist_data:
                 details['description'] = plist_data['CFBundleDescription']
+                details['CFBundleDescription'] = plist_data['CFBundleDescription']
             elif 'CFBundleGetInfoString' in plist_data:
                 details['description'] = plist_data['CFBundleGetInfoString']
 
@@ -53,9 +58,22 @@ def get_app_details(app_path, app_name):
             if 'CFBundleIdentifier' in plist_data:
                 details['bundle_identifier'] = plist_data['CFBundleIdentifier']
 
+            # Extract additional metadata fields
+            if 'CFBundleGetInfoString' in plist_data:
+                details['copyright'] = plist_data['CFBundleGetInfoString']
+
         except Exception:
             # Silently continue if we can't read the plist
             pass
+
+    # Get file creation and modification times
+    try:
+        stat_info = os.stat(app_path)
+        details['created'] = str(stat_info.st_ctime)
+        details['modified'] = str(stat_info.st_mtime)
+    except Exception:
+        # Silently continue if we can't get file stats
+        pass
 
     return details
 
@@ -254,14 +272,43 @@ def _process_batch(batch, batch_num, num_batches, debug_mode):
     elif not descriptions:
         print("  ❌ No descriptions parsed from response")
 
-    return descriptions
+    # Merge app metadata with descriptions
+    merged_results = {}
+    for app in batch:
+        app_name = app['name']
+        if app_name in descriptions:
+            # Merge metadata with description
+            merged_results[app_name] = {
+                'description': descriptions[app_name],
+                'version': app['version'],
+                'created': app['created'],
+                'modified': app['modified'],
+                'copyright': app['copyright'],
+                'CFBundleDescription': app['CFBundleDescription'],
+                'bundle_identifier': app['bundle_identifier'],
+                'path': app['path']
+            }
+        else:
+            # Include metadata even if no description was generated
+            merged_results[app_name] = {
+                'description': '',
+                'version': app['version'],
+                'created': app['created'],
+                'modified': app['modified'],
+                'copyright': app['copyright'],
+                'CFBundleDescription': app['CFBundleDescription'],
+                'bundle_identifier': app['bundle_identifier'],
+                'path': app['path']
+            }
+
+    return merged_results
 
 
 def _save_results(all_descriptions):
     """Save results to applications.json."""
     with open("applications.json", 'w', encoding='utf-8') as f:
         json.dump(all_descriptions, f, indent=2, ensure_ascii=False)
-    print(f"\nSaved {len(all_descriptions)} descriptions to applications.json")
+    print(f"\nSaved {len(all_descriptions)} applications with metadata to applications.json")
 
 
 def main():
@@ -276,19 +323,19 @@ def main():
 
     print(f"Found {len(apps)} apps. Creating prompt file(s) and generating descriptions in batches of {BATCH_SIZE}...")
 
-    all_descriptions = {}
+    all_applications = {}
     num_batches = (len(apps) + BATCH_SIZE - 1) // BATCH_SIZE
 
     for i in range(0, len(apps), BATCH_SIZE):
         batch = apps[i:i + BATCH_SIZE]
         batch_num = i // BATCH_SIZE + 1
-        descriptions = _process_batch(batch, batch_num, num_batches, debug_mode)
-        all_descriptions.update(descriptions)
+        batch_results = _process_batch(batch, batch_num, num_batches, debug_mode)
+        all_applications.update(batch_results)
 
         if debug_mode:
-            print(f"  Total descriptions so far: {len(all_descriptions)}")
+            print(f"  Total applications so far: {len(all_applications)}")
 
-    _save_results(all_descriptions)
+    _save_results(all_applications)
 
 
 if __name__ == "__main__":

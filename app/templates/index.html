@@ -49,19 +49,25 @@
                 <div class="grid-row">
                     <div class="grid-header">Application</div>
                     <div class="grid-header">Description</div>
+                    <div class="grid-header">Version</div>
+                    <div class="grid-header">Copyright</div>
                     <div class="grid-header">Action</div>
                 </div>
                 
-                {% for app_name, description in applications.items() %}
+                {% for app_name, app_data in applications.items() %}
                 <div class="grid-row">
                     <div class="grid-item app-name">{{ app_name }}</div>
-                    <div class="grid-item app-description" 
-                         onclick="copyToClipboard('{{ description|replace("'", "\\'")|replace('"', '\\"') }}', '{{ app_name|replace("'", "\\'")|replace('"', '\\"') }}')">
-                        {{ description }}
+                    <div class="grid-item app-description copyable" 
+                         data-description="{{ app_data.description|replace('"', '&quot;')|replace("'", '&#39;') }}"
+                         data-app-name="{{ app_name|replace('"', '&quot;')|replace("'", '&#39;') }}">
+                        {{ app_data.description }}
                     </div>
+                    <div class="grid-item app-version">{{ app_data.version }}</div>
+                    <div class="grid-item app-copyright">{{ app_data.copyright }}</div>
                     <div class="grid-item">
                         <button class="copy-button" 
-                                onclick="copyToClipboard('{{ description|replace("'", "\\'")|replace('"', '\\"') }}', '{{ app_name|replace("'", "\\'")|replace('"', '\\"') }}')">
+                                data-description="{{ app_data.description|replace('"', '&quot;')|replace("'", '&#39;') }}"
+                                data-app-name="{{ app_name|replace('"', '&quot;')|replace("'", '&#39;') }}">
                             Copy
                         </button>
                     </div>

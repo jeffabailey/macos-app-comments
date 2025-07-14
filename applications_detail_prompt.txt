@@ -16,23 +16,58 @@ Format your response as a JSON object where each key is the app name and each va
 Here are the apps to describe:
 
 
-App Name: Ableton Live 11 Suite
-App Description: 11.0.11 (2021-09-28_6a1c879bfb), Copyright 1999-2021 Ableton AG
-Version: 11.0.11 (2021-09-28_6a1c879bfb)
-Bundle ID: com.ableton.live
-Path: /Applications/Ableton Live 11 Suite.app
-
-
-App Name: AdBlock
-Version: 2.1.10
-Bundle ID: com.betafish.adblock-mac
-Path: /Applications/AdBlock.app
-
-
-App Name: Advantage 360 SmartSet App
+App Name: griply
 Version: 1.0.4
-Bundle ID: com.company.SmartSetMasterErgo (Mac)
-Path: /Applications/Advantage 360 SmartSet App.app
+Bundle ID: com.electron.griply
+Path: /Applications/griply.app
+
+
+App Name: iMovie
+Version: 10.4.3
+Bundle ID: com.apple.iMovieApp
+Path: /Applications/iMovie.app
+
+
+App Name: iTerm
+App Description: 3.5.14
+Version: 3.5.14
+Bundle ID: com.googlecode.iterm2
+Path: /Applications/iTerm.app
+
+
+App Name: kid3
+Version: 3.9.6
+Bundle ID: org.kde.kid3
+Path: /Applications/kid3.app
+
+
+App Name: kitty
+App Description: kitty - The fast, feature-rich, GPU based terminal emulator. https://sw.kovidgoyal.net/kitty/
+Version: 0.42.1
+Bundle ID: net.kovidgoyal.kitty
+Path: /Applications/kitty.app
+
+
+App Name: noTunes
+Version: 3.5
+Bundle ID: digital.twisted.noTunes
+Path: /Applications/noTunes.app
+
+
+App Name: texttospeech
+Version: 1.1.15
+Bundle ID: com.cc.texttospeech
+Path: /Applications/texttospeech.app
+
+
+App Name: xbar
+Path: /Applications/xbar.app
+
+
+App Name: zoom.us
+Version: 6.4.10 (56141)
+Bundle ID: us.zoom.xos
+Path: /Applications/zoom.us.app
 
 
 Please provide your descriptions in JSON format. 

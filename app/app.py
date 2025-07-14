@@ -15,15 +15,48 @@ def load_applications():
 @app.route('/')
 def index():
     """Main page displaying all applications"""
-    applications = load_applications()
+    applications_data = load_applications()
+    # Convert the new structure to the format expected by the template
+    applications = {}
+    for app_name, app_data in applications_data.items():
+        if isinstance(app_data, dict):
+            # New structure with metadata
+            applications[app_name] = {
+                'description': app_data.get('description', ''),
+                'version': app_data.get('version', ''),
+                'copyright': app_data.get('copyright', ''),
+                'bundle_identifier': app_data.get('bundle_identifier', ''),
+                'path': app_data.get('path', ''),
+                'created': app_data.get('created', ''),
+                'modified': app_data.get('modified', ''),
+                'CFBundleDescription': app_data.get('CFBundleDescription', '')
+            }
+        else:
+            # Fallback for old structure (string description)
+            applications[app_name] = {
+                'description': app_data,
+                'version': '',
+                'copyright': '',
+                'bundle_identifier': '',
+                'path': '',
+                'created': '',
+                'modified': '',
+                'CFBundleDescription': ''
+            }
     return render_template('index.html', applications=applications)
 
 @app.route('/copy-description', methods=['POST'])
 def copy_description():
     """HTMX endpoint to copy description to clipboard"""
     app_name = request.form.get('app_name')
-    applications = load_applications()
-    description = applications.get(app_name, '')
+    applications_data = load_applications()
+    app_data = applications_data.get(app_name, {})
+    
+    if isinstance(app_data, dict):
+        description = app_data.get('description', '')
+    else:
+        # Fallback for old structure
+        description = app_data if app_data else ''
     
     return jsonify({
         'success': True,

@@ -133,10 +133,28 @@ function addStatusLine(message) {
     output.scrollTop = output.scrollHeight;
 }
 
-// Add search functionality
+// Add search functionality and copy event listeners
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.querySelector('.search-input');
     const gridRows = document.querySelectorAll('.applications-grid .grid-row');
+    
+    // Add copy functionality for clickable descriptions
+    document.querySelectorAll('.app-description.copyable').forEach(element => {
+        element.addEventListener('click', function() {
+            const description = this.getAttribute('data-description');
+            const appName = this.getAttribute('data-app-name');
+            copyToClipboard(description, appName);
+        });
+    });
+    
+    // Add copy functionality for copy buttons
+    document.querySelectorAll('.copy-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const description = this.getAttribute('data-description');
+            const appName = this.getAttribute('data-app-name');
+            copyToClipboard(description, appName);
+        });
+    });
     
     searchInput.addEventListener('input', function() {
         const searchTerm = this.value.toLowerCase();
