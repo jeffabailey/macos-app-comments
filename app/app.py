@@ -3,8 +3,6 @@ import json
 import os
 import sys
 import subprocess
-import threading
-import queue
 
 app = Flask(__name__)
 

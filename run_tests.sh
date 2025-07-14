@@ -35,6 +35,65 @@ echo "Running Python linter..."
 pip install flake8 >/dev/null 2>&1 || true
 flake8 ./*.py --max-line-length=90 --ignore=E203,W503 --extend-ignore=E501 || echo "Linting issues found"
 
+# Check for unused imports
+echo "Checking for unused imports..."
+python -c "
+import ast
+import os
+import sys
+
+def check_unused_imports(file_path):
+    with open(file_path, 'r') as f:
+        tree = ast.parse(f.read())
+    
+    # Get all imports
+    imports = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imports.append(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                imports.append(node.module)
+    
+    # Get all names used in the file
+    used_names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            used_names.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            # Handle cases like Template.render()
+            if isinstance(node.value, ast.Name):
+                used_names.add(node.value.id)
+    
+    # Check for unused imports
+    unused = []
+    for imp in imports:
+        if imp not in used_names:
+            # Skip if it's a test file importing the main module
+            if file_path.endswith('test_python.py') and imp == 'app_metadata_builder':
+                continue
+            if file_path.endswith('debug_test.py') and imp == 'app_metadata_builder':
+                continue
+            unused.append(imp)
+    
+    if unused:
+        print(f'Unused imports in {file_path}: {unused}')
+        return False
+    return True
+
+all_good = True
+for py_file in [f for f in os.listdir('.') if f.endswith('.py')]:
+    if not check_unused_imports(py_file):
+        all_good = False
+
+if not all_good:
+    print('Unused imports found!')
+    exit(1)
+else:
+    print('No unused imports found.')
+"
+
 # Basic functionality test
 echo "Testing basic functionality..."
 python -c "
